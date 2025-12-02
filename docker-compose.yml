@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  practice1_api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./shared:/shared
+    depends_on:
+      - ffmpeg_worker
+
+  ffmpeg_worker:
+    build: ./ffmpeg_worker
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./shared:/shared
