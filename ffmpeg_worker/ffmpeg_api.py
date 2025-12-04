@@ -99,6 +99,18 @@ def run_ffmpeg(job: FFmpegJob):
             output_full_path
         ]
         return run_subprocess(cmd)
+    
+    if job.command == "visualize_vectors":
+        print(f"Generating motion vector video for {job.input_file}...")
+        cmd = [
+            "ffmpeg",
+            "-flags2", "+export_mvs",
+            "-i", input_full_path,
+            "-vf", "codecview=mv=pf+bf+bb",
+            "-y",
+            output_full_path
+        ]
+        return run_subprocess(cmd)
 
     return {"success": False, "error": "Unknown command"}
 

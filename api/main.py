@@ -235,3 +235,59 @@ def create_bbb_container():
         "worker_response": worker_resp,
         "output_file": output_filename
     }
+
+# seminar 2 part 5, count tracks in container
+@app.post("/s2/count-tracks")
+def count_tracks(filename: str = "bbb_20s_multiaudio.mp4"):
+
+    target_file = filename
+    if not os.path.exists(f"{SHARED_FOLDER}/{target_file}"):
+        target_file = BBB_FILENAME
+        if not os.path.exists(f"{SHARED_FOLDER}/{target_file}"):
+             return {"error": "File not found. Please run /download-bbb or /create-bbb-container first."}
+
+    # use the get_info command (from exercise 3) to inspect tracks
+    payload = {"command": "get_info", "input_file": target_file}
+    worker_resp = send_to_worker(payload)
+
+    if not worker_resp.get("success"):
+        return {"error": "Failed to inspect file"}
+
+    streams = worker_resp["data"].get("streams", [])
+    
+    # count tracks by type
+    audio_count = sum(1 for s in streams if s["codec_type"] == "audio")
+    video_count = sum(1 for s in streams if s["codec_type"] == "video")
+    total_count = len(streams)
+
+    return {
+        "file_inspected": target_file,
+        "total_tracks": total_count,
+        "breakdown": {
+            "audio_tracks": audio_count,
+            "video_tracks": video_count,
+            "other_tracks": total_count - (audio_count + video_count)
+        }
+    }
+
+# seminar 2 part 6, macroblocks and motion vectors
+@app.post("/s2/visualize-vectors")
+def visualize_vectors():
+
+    input_file = "bbb_20s_multiaudio.mp4"
+    
+    if not os.path.exists(f"{SHARED_FOLDER}/{input_file}"):
+        if os.path.exists(f"{SHARED_FOLDER}/{BBB_FILENAME}"):
+             input_file = BBB_FILENAME
+        else:
+             return {"error": "No video found. Run /download-bbb first."}
+
+    output_file = f"vectors_{input_file}"
+    
+    payload = {
+        "command": "visualize_vectors",
+        "input_file": input_file,
+        "output_file": output_file
+    }
+    
+    return send_to_worker(payload)
