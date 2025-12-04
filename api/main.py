@@ -291,3 +291,25 @@ def visualize_vectors():
     }
     
     return send_to_worker(payload)
+
+# seminar 2 part 7, YUV histogram
+@app.post("/s2/yuv-histogram")
+def yuv_histogram():
+
+    input_file = "bbb_20s_multiaudio.mp4"
+    
+    if not os.path.exists(f"{SHARED_FOLDER}/{input_file}"):
+        if os.path.exists(f"{SHARED_FOLDER}/{BBB_FILENAME}"):
+             input_file = BBB_FILENAME
+        else:
+             return {"error": "No video found. Run /download-bbb first."}
+
+    output_file = f"histogram_{input_file}"
+    
+    payload = {
+        "command": "yuv_histogram",
+        "input_file": input_file,
+        "output_file": output_file
+    }
+    
+    return send_to_worker(payload)

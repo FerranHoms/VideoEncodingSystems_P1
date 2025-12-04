@@ -112,6 +112,19 @@ def run_ffmpeg(job: FFmpegJob):
         ]
         return run_subprocess(cmd)
 
+    if job.command == "yuv_histogram":
+        print(f"Generating YUV histogram video for {job.input_file}...")
+
+        cmd = [
+            "ffmpeg",
+            "-i", input_full_path,
+            "-vf", "split=2[a][b],[b]histogram,format=yuva444p[hh],[a][hh]overlay",
+            "-c:a", "copy",
+            "-y",
+            output_full_path
+        ]
+        return run_subprocess(cmd)
+
     return {"success": False, "error": "Unknown command"}
 
 # helper function to detect errors with the proccess
