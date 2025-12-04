@@ -10,6 +10,10 @@ app = FastAPI()
 
 # folder to share files with the ffmpeg container
 SHARED_FOLDER = "/shared"
+BBB_FILENAME = "big_buck_bunny.mp4"
+
+# low resolution fragment of Big Buck Bunny for testing
+BBB_URL = "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_5MB.mp4"
 
 translator = seminar1_adapted_code.ColorTranslator()
 jpeg_manager = seminar1_adapted_code.JPEGFileManager()
@@ -87,3 +91,90 @@ def resize_image_remote(file: UploadFile = File(...), width: int = 640, height: 
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# helper to send jobs to the ffmpeg worker and detect errors
+def send_to_worker(payload):
+    ffmpeg_url = "http://ffmpeg_worker:8001/ffmpeg-execute"
+    try:
+        response = requests.post(ffmpeg_url, json=payload)
+        return response.json()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Worker Error: {str(e)}")
+
+# seminar 2 part 1, download video
+@app.post("/download-bbb")
+def download_bbb_video():
+
+    file_path = f"{SHARED_FOLDER}/{BBB_FILENAME}"
+    
+    if os.path.exists(file_path):
+        return {"message": "Video already exists!", "path": file_path}
+    
+    print(f"Downloading BBB from {BBB_URL}...")
+    try:
+        with requests.get(BBB_URL, stream=True) as r:
+            r.raise_for_status()
+            with open(file_path, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        return {"message": "Download successful", "path": file_path}
+    except Exception as e:
+        return {"error": str(e)}
+
+# seminar 2 part 1, change resolution
+class ResolutionInput(BaseModel):
+    width: int
+    height: int
+
+@app.post("/s2/change-resolution")
+def change_resolution(params: ResolutionInput):
+
+    input_video = BBB_FILENAME
+    output_video = f"bbb_{params.width}x{params.height}.mp4"
+    
+    # check if we have the video
+    if not os.path.exists(f"{SHARED_FOLDER}/{input_video}"):
+        return {"error": "Please run /download-bbb first!"}
+
+    payload = {
+        "command": "change_resolution",
+        "input_file": input_video,
+        "output_file": output_video,
+        "width": params.width,
+        "height": params.height
+    }
+    
+    worker_resp = send_to_worker(payload)
+    return {
+        "status": "Resolution change requested",
+        "worker_response": worker_resp,
+        "output_file": output_video
+    }
+
+# seminar 2 part 1, change chroma subsampling
+class ChromaInput(BaseModel):
+    chroma_mode: str
+
+@app.post("/s2/change-chroma")
+def change_chroma(params: ChromaInput):
+    
+    input_video = BBB_FILENAME
+    output_video = f"bbb_{params.chroma_mode}.mp4"
+
+    if not os.path.exists(f"{SHARED_FOLDER}/{input_video}"):
+        return {"error": "Please run /download-bbb first!"}
+
+    payload = {
+        "command": "change_chroma",
+        "input_file": input_video,
+        "output_file": output_video,
+        "chroma_subsampling": params.chroma_mode
+    }
+
+    worker_resp = send_to_worker(payload)
+    return {
+        "status": "Chroma change requested",
+        "worker_response": worker_resp,
+        "output_file": output_video
+    }
