@@ -1,5 +1,6 @@
 import subprocess
 import os
+import json
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -10,7 +11,7 @@ SHARED_FOLDER = "/shared"
 class FFmpegJob(BaseModel):
     command: str
     input_file: str
-    output_file: str
+    output_file: str = ""
     width: int = 0
     height: int = 0
     chroma_subsampling: str = ""
@@ -53,6 +54,47 @@ def run_ffmpeg(job: FFmpegJob):
             "-i", input_full_path,
             "-vf", f"format={job.chroma_subsampling}",
             "-c:a", "copy",
+            "-y",
+            output_full_path
+        ]
+        return run_subprocess(cmd)
+
+    # get video info
+    if job.command == "get_info":
+        # use ffprobe to return json data
+        cmd = [
+            "ffprobe", 
+            "-v", "quiet", 
+            "-print_format", "json", 
+            "-show_format", 
+            "-show_streams", 
+            input_full_path
+        ]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            probe_data = json.loads(result.stdout)
+            return {"success": True, "data": probe_data}
+        except subprocess.CalledProcessError as e:
+            return {"success": False, "error": e.stderr}
+        except json.JSONDecodeError:
+            return {"success": False, "error": "Could not parse ffprobe output"}
+
+    # cut and package audio
+    if job.command == "process_bbb_container":
+        
+        print(f"Processing multi-audio container for {job.input_file}...")
+        cmd = [
+            "ffmpeg",
+            "-i", input_full_path,
+            "-t", "20",                  # cut duration
+            "-map", "0:v",               # map video from input 0
+            "-map", "0:a",               # map audio from input 0 (for track 1)
+            "-map", "0:a",               # map audio from input 0 (for track 2)
+            "-map", "0:a",               # map audio from input 0 (for track 3)
+            "-c:v", "copy",              # copy video stream (fast)
+            "-c:a:0", "aac", "-ac:a:0", "1",
+            "-c:a:1", "libmp3lame", "-b:a:1", "128k", "-ac:a:1", "2",
+            "-c:a:2", "ac3",
             "-y",
             output_full_path
         ]

@@ -13,7 +13,7 @@ SHARED_FOLDER = "/shared"
 BBB_FILENAME = "big_buck_bunny.mp4"
 
 # low resolution fragment of Big Buck Bunny for testing
-BBB_URL = "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_5MB.mp4"
+BBB_URL = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
 
 translator = seminar1_adapted_code.ColorTranslator()
 jpeg_manager = seminar1_adapted_code.JPEGFileManager()
@@ -177,4 +177,61 @@ def change_chroma(params: ChromaInput):
         "status": "Chroma change requested",
         "worker_response": worker_resp,
         "output_file": output_video
+    }
+
+# seminar 2 part 3, get video info 
+@app.post("/s2/video-info")
+def get_video_info():
+
+    if not os.path.exists(f"{SHARED_FOLDER}/{BBB_FILENAME}"):
+        return {"error": "Please run /download-bbb first!"}
+
+    payload = {
+        "command": "get_info",
+        "input_file": BBB_FILENAME
+    }
+    
+    worker_resp = send_to_worker(payload)
+    
+    if not worker_resp.get("success"):
+        return {"error": "Failed to retrieve info", "details": worker_resp}
+
+    # extract 5 relevant data points
+    data = worker_resp["data"]
+    try:
+        format_info = data.get("format", {})
+        video_stream = next((s for s in data.get("streams", []) if s["codec_type"] == "video"), {})
+        
+        relevant_data = {
+            "1_filename": format_info.get("filename"),
+            "2_duration_sec": format_info.get("duration"),
+            "3_bitrate": format_info.get("bit_rate"),
+            "4_video_codec": video_stream.get("codec_name"),
+            "5_resolution": f"{video_stream.get('width')}x{video_stream.get('height')}"
+        }
+        return {"relevant_info": relevant_data, "full_probe_dump": data}
+    except Exception as e:
+        return {"error": "Could not parse specific fields", "details": str(e)}
+
+# seminar 2 part 4, create multi-audio container
+@app.post("/s2/create-bbb-container")
+def create_bbb_container():
+
+    if not os.path.exists(f"{SHARED_FOLDER}/{BBB_FILENAME}"):
+        return {"error": "Please run /download-bbb first!"}
+
+    output_filename = "bbb_20s_multiaudio.mp4"
+
+    payload = {
+        "command": "process_bbb_container",
+        "input_file": BBB_FILENAME,
+        "output_file": output_filename
+    }
+
+    worker_resp = send_to_worker(payload)
+    
+    return {
+        "status": "Container processing requested",
+        "worker_response": worker_resp,
+        "output_file": output_filename
     }
