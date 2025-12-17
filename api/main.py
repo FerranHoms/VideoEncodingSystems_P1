@@ -1,5 +1,6 @@
 # api/main.py
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware 
 import shutil
 import os
 import requests
@@ -7,6 +8,14 @@ from pydantic import BaseModel
 import seminar1_adapted_code
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # folder to share files with the ffmpeg container
 SHARED_FOLDER = "/shared"

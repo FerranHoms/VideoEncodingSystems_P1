@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Practice 2 Web UI</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Web UI</h1>
+            <p>Video Encoding Systems - Practice 2</p>
+        </header>
+
+        <!-- STATUS LOG -->
+        <div id="status-panel">
+            <h3>Response Log</h3>
+            <pre id="output">Waiting for action...</pre>
+        </div>
+
+        <div class="grid">
+            <!-- S2: PREPARATION -->
+            <div class="card">
+                <h2>1. Preparation</h2>
+                <p>Required for S2/P2 tasks.</p>
+                <button onclick="apiCall('/download-bbb')">Download BBB Video</button>
+                <button onclick="apiCall('/s2/create-bbb-container')">Create 20s Multi-Audio</button>
+            </div>
+
+            <!-- S1: BASICS -->
+            <div class="card">
+                <h2>2. Basic Tools (S1)</h2>
+                <div class="input-group">
+                    <input type="number" id="r" placeholder="R" step="0.1">
+                    <input type="number" id="g" placeholder="G" step="0.1">
+                    <input type="number" id="b" placeholder="B" step="0.1">
+                    <button onclick="convertColor()">RGB to YUV</button>
+                </div>
+                <hr>
+                <input type="file" id="uploadFile">
+                <button onclick="uploadImage('/analyze-jpeg-block')">Analyze JPEG</button>
+            </div>
+
+            <!-- S2: ANALYSIS -->
+            <div class="card">
+                <h2>3. Analysis (S2)</h2>
+                <button onclick="apiCall('/s2/video-info')">Get Video Info</button>
+                <button onclick="apiCall('/s2/count-tracks')">Count Tracks</button>
+                <button onclick="apiCall('/s2/visualize-vectors')">Visualize Motion Vectors</button>
+                <button onclick="apiCall('/s2/yuv-histogram')">YUV Histogram</button>
+            </div>
+
+            <!-- P2: TRANSCODING -->
+            <div class="card">
+                <h2>4. Transcoding (P2)</h2>
+                <div class="input-group">
+                    <select id="codec-select">
+                        <option value="vp8">VP8 (.webm)</option>
+                        <option value="vp9">VP9 (.webm)</option>
+                        <option value="h265">H.265 (.mp4)</option>
+                        <option value="av1">AV1 (.mkv)</option>
+                    </select>
+                    <button onclick="convertCodec()">Convert Codec</button>
+                </div>
+                <hr>
+                <button onclick="apiCall('/s3/encoding-ladder')">Generate Encoding Ladder</button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

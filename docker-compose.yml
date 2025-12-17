@@ -16,3 +16,10 @@ services:
       - "8001:8001"
     volumes:
       - ./shared:/shared
+    
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - practice2_api
