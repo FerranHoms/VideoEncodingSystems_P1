@@ -313,3 +313,34 @@ def yuv_histogram():
     }
     
     return send_to_worker(payload)
+
+# practice 2 part 1, convert video
+class ConvertInput(BaseModel):
+    codec: str
+
+@app.post("/p2/convert")
+def convert_video(params: ConvertInput):
+    input_video = "bbb_20s_multiaudio.mp4"
+    
+    if not os.path.exists(f"{SHARED_FOLDER}/{input_video}"):
+        input_video = BBB_FILENAME
+        if not os.path.exists(f"{SHARED_FOLDER}/{input_video}"):
+             return {"error": "Video not found. Please run /download-bbb first."}
+
+    # determine extension based on codec
+    extension = "mp4"
+    if params.codec in ["vp8", "vp9"]:
+        extension = "webm"
+    elif params.codec == "av1":
+        extension = "mkv"
+    
+    output_video = f"bbb_{params.codec}.{extension}"
+
+    payload = {
+        "command": "convert_codec",
+        "input_file": input_video,
+        "output_file": output_video,
+        "codec": params.codec
+    }
+    
+    return send_to_worker(payload)

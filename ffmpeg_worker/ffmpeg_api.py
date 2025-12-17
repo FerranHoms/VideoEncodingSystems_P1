@@ -15,6 +15,7 @@ class FFmpegJob(BaseModel):
     width: int = 0
     height: int = 0
     chroma_subsampling: str = ""
+    codec: str = "" 
 
 @app.post("/ffmpeg-execute")
 def run_ffmpeg(job: FFmpegJob):
@@ -123,6 +124,42 @@ def run_ffmpeg(job: FFmpegJob):
             "-y",
             output_full_path
         ]
+        return run_subprocess(cmd)
+    
+    if job.command == "convert_codec":
+        print(f"Transcoding {job.input_file} to {job.codec}...")
+        
+        # default settings
+        video_codec_lib = "libx264" # fallback
+        audio_codec = "aac"
+        
+        if job.codec == "vp8":
+            video_codec_lib = "libvpx"
+            audio_codec = "libvorbis"
+        elif job.codec == "vp9":
+            video_codec_lib = "libvpx-vp9"
+            audio_codec = "libvorbis"
+        elif job.codec == "h265":
+            video_codec_lib = "libx265"
+            audio_codec = "aac"
+        elif job.codec == "av1":
+            video_codec_lib = "libaom-av1"
+            audio_codec = "aac"
+        
+        cmd = [
+            "ffmpeg",
+            "-i", input_full_path,
+            "-c:v", video_codec_lib,
+            "-c:a", audio_codec,
+            "-cpu-used", "4", 
+            "-y",
+            output_full_path
+        ]
+        
+        # special handling for av1 to not be super slow (crf 30 is lower quality but faster)
+        if job.codec == "av1":
+            cmd.extend(["-crf", "30", "-b:v", "0"])
+
         return run_subprocess(cmd)
 
     return {"success": False, "error": "Unknown command"}
