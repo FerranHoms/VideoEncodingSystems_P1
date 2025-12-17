@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  practice1_api:
+  practice2_api:
     build: ./api
     ports:
       - "8000:8000"

@@ -17,20 +17,64 @@ class FFmpegJob(BaseModel):
     chroma_subsampling: str = ""
     codec: str = "" 
 
+class BaseVideoHandler:
+    def build_scale_command(self, input_path, output_path, width, height):
+        return [
+            "ffmpeg", 
+            "-i", input_full_path(input_path), 
+            "-vf", f"scale={width}:{height}", 
+            "-c:a", "copy",
+            "-y", 
+            output_full_path(output_path)
+        ]
+
+class LadderHandler(BaseVideoHandler):
+    def generate_ladder(self, input_file, output_base_name):
+        # define our ladder tiers (resolutions)
+        tiers = [
+            (1280, 720, "720p"),
+            (640, 480, "480p")
+        ]
+        
+        results = []
+        
+        for width, height, label in tiers:
+
+            filename_no_ext = os.path.splitext(output_base_name)[0]
+            ext = os.path.splitext(output_base_name)[1]
+            if not ext: ext = ".mp4"
+            
+            tier_output = f"{filename_no_ext}_{label}{ext}"
+            
+            cmd = self.build_scale_command(input_file, tier_output, width, height)
+            
+            print(f"Ladder: Generating {label}...")
+            try:
+                subprocess.run(cmd, capture_output=True, text=True, check=True)
+                results.append(tier_output)
+            except subprocess.CalledProcessError as e:
+                print(f"Error generating {label}: {e.stderr}")
+                
+        return results
+
+def input_full_path(filename):
+    return os.path.join(SHARED_FOLDER, filename)
+
+def output_full_path(filename):
+    if not filename: return ""
+    return os.path.join(SHARED_FOLDER, filename)
+
 @app.post("/ffmpeg-execute")
 def run_ffmpeg(job: FFmpegJob):
-    
-    input_full_path = os.path.join(SHARED_FOLDER, job.input_file)
-    output_full_path = os.path.join(SHARED_FOLDER, job.output_file)
 
     # resize
     if job.command == "scale":
         cmd = [
             "ffmpeg", 
-            "-i", input_full_path, 
+            "-i", input_full_path(job.input_file), 
             "-vf", f"scale={job.width}:{job.height}", 
             "-y", 
-            output_full_path
+            output_full_path(job.output_file)
         ]
         return run_subprocess(cmd)
 
@@ -39,11 +83,11 @@ def run_ffmpeg(job: FFmpegJob):
         print(f"Changing resolution of {job.input_file} to {job.width}x{job.height}")
         cmd = [
             "ffmpeg", 
-            "-i", input_full_path, 
+            "-i", input_full_path(job.input_file), 
             "-vf", f"scale={job.width}:{job.height}",
             "-c:a", "copy", 
             "-y", 
-            output_full_path
+            output_full_path(job.output_file)
         ]
         return run_subprocess(cmd)
 
@@ -52,11 +96,11 @@ def run_ffmpeg(job: FFmpegJob):
         print(f"Changing chroma to {job.chroma_subsampling}")
         cmd = [
             "ffmpeg",
-            "-i", input_full_path,
+            "-i", input_full_path(job.input_file),
             "-vf", f"format={job.chroma_subsampling}",
             "-c:a", "copy",
             "-y",
-            output_full_path
+            output_full_path(job.output_file)
         ]
         return run_subprocess(cmd)
 
@@ -69,7 +113,7 @@ def run_ffmpeg(job: FFmpegJob):
             "-print_format", "json", 
             "-show_format", 
             "-show_streams", 
-            input_full_path
+            input_full_path(job.input_file)
         ]
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -86,7 +130,7 @@ def run_ffmpeg(job: FFmpegJob):
         print(f"Processing multi-audio container for {job.input_file}...")
         cmd = [
             "ffmpeg",
-            "-i", input_full_path,
+            "-i", input_full_path(job.input_file),
             "-t", "20",                  # cut duration
             "-map", "0:v",               # map video from input 0
             "-map", "0:a",               # map audio from input 0 (for track 1)
@@ -106,10 +150,10 @@ def run_ffmpeg(job: FFmpegJob):
         cmd = [
             "ffmpeg",
             "-flags2", "+export_mvs",
-            "-i", input_full_path,
+            "-i", input_full_path(job.input_file),
             "-vf", "codecview=mv=pf+bf+bb",
             "-y",
-            output_full_path
+            output_full_path(job.output_file)
         ]
         return run_subprocess(cmd)
 
@@ -118,11 +162,11 @@ def run_ffmpeg(job: FFmpegJob):
 
         cmd = [
             "ffmpeg",
-            "-i", input_full_path,
+            "-i", input_full_path(job.input_file),
             "-vf", "split=2[a][b],[b]histogram,format=yuva444p[hh],[a][hh]overlay",
             "-c:a", "copy",
             "-y",
-            output_full_path
+            output_full_path(job.output_file)
         ]
         return run_subprocess(cmd)
     
@@ -148,12 +192,12 @@ def run_ffmpeg(job: FFmpegJob):
         
         cmd = [
             "ffmpeg",
-            "-i", input_full_path,
+            "-i", input_full_path(job.input_file),
             "-c:v", video_codec_lib,
             "-c:a", audio_codec,
             "-cpu-used", "4", 
             "-y",
-            output_full_path
+            output_full_path(job.output_file)
         ]
         
         # special handling for av1 to not be super slow (crf 30 is lower quality but faster)
@@ -161,6 +205,22 @@ def run_ffmpeg(job: FFmpegJob):
             cmd.extend(["-crf", "30", "-b:v", "0"])
 
         return run_subprocess(cmd)
+    
+    if job.command == "encoding_ladder":
+        print(f"Starting encoding ladder for {job.input_file}")
+        
+        ladder_runner = LadderHandler()
+        
+        created_files = ladder_runner.generate_ladder(job.input_file, job.output_file)
+        
+        if created_files:
+            return {
+                "success": True, 
+                "message": "Ladder creation complete", 
+                "files_created": created_files
+            }
+        else:
+            return {"success": False, "error": "Failed to create any ladder versions"}
 
     return {"success": False, "error": "Unknown command"}
 

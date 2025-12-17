@@ -344,3 +344,23 @@ def convert_video(params: ConvertInput):
     }
     
     return send_to_worker(payload)
+
+# practice 2 part 2, encoding ladder
+@app.post("/p2/encoding-ladder")
+def create_encoding_ladder():
+    input_video = "bbb_20s_multiaudio.mp4"
+    
+    if not os.path.exists(f"{SHARED_FOLDER}/{input_video}"):
+        input_video = BBB_FILENAME
+        if not os.path.exists(f"{SHARED_FOLDER}/{input_video}"):
+             return {"error": "Video not found. Please run /download-bbb first."}
+
+    output_base = "ladder_output.mp4"
+
+    payload = {
+        "command": "encoding_ladder",
+        "input_file": input_video,
+        "output_file": output_base
+    }
+    
+    return send_to_worker(payload)
