@@ -34,6 +34,12 @@ class ColorInput(BaseModel):
     g: float
     b: float
 
+def ensure_file(filename: str):
+    path = f"{SHARED_FOLDER}/{filename}"
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail=f"File {filename} not found. Run download/create first.")
+    return filename
+
 @app.post("/rgb-to-yuv")
 def convert_color(data: ColorInput):
 
@@ -116,10 +122,7 @@ def send_to_worker(payload):
 def download_bbb_video():
 
     file_path = f"{SHARED_FOLDER}/{BBB_FILENAME}"
-    
-    if os.path.exists(file_path):
-        return {"message": "Video already exists!", "path": file_path}
-    
+
     print(f"Downloading BBB from {BBB_URL}...")
     try:
         with requests.get(BBB_URL, stream=True) as r:
@@ -138,27 +141,21 @@ class ResolutionInput(BaseModel):
 
 @app.post("/s2/change-resolution")
 def change_resolution(params: ResolutionInput):
-
-    input_video = BBB_FILENAME
+    ensure_file(BBB_FILENAME)
+    
     output_video = f"bbb_{params.width}x{params.height}.mp4"
     
-    # check if we have the video
-    if not os.path.exists(f"{SHARED_FOLDER}/{input_video}"):
-        return {"error": "Please run /download-bbb first!"}
-
     payload = {
         "command": "change_resolution",
-        "input_file": input_video,
+        "input_file": BBB_FILENAME,
         "output_file": output_video,
         "width": params.width,
         "height": params.height
     }
     
-    worker_resp = send_to_worker(payload)
     return {
-        "status": "Resolution change requested",
-        "worker_response": worker_resp,
-        "output_file": output_video
+        "status": "Job Sent", 
+        "worker_response": send_to_worker(payload)
     }
 
 # seminar 2 part 1, change chroma subsampling
@@ -171,8 +168,7 @@ def change_chroma(params: ChromaInput):
     input_video = BBB_FILENAME
     output_video = f"bbb_{params.chroma_mode}.mp4"
 
-    if not os.path.exists(f"{SHARED_FOLDER}/{input_video}"):
-        return {"error": "Please run /download-bbb first!"}
+    ensure_file(input_video)
 
     payload = {
         "command": "change_chroma",
@@ -192,8 +188,7 @@ def change_chroma(params: ChromaInput):
 @app.post("/s2/video-info")
 def get_video_info():
 
-    if not os.path.exists(f"{SHARED_FOLDER}/{BBB_FILENAME}"):
-        return {"error": "Please run /download-bbb first!"}
+    ensure_file(BBB_FILENAME)
 
     payload = {
         "command": "get_info",
@@ -226,8 +221,7 @@ def get_video_info():
 @app.post("/s2/create-bbb-container")
 def create_bbb_container():
 
-    if not os.path.exists(f"{SHARED_FOLDER}/{BBB_FILENAME}"):
-        return {"error": "Please run /download-bbb first!"}
+    ensure_file(BBB_FILENAME)
 
     output_filename = "bbb_20s_multiaudio.mp4"
 
@@ -250,10 +244,7 @@ def create_bbb_container():
 def count_tracks(filename: str = "bbb_20s_multiaudio.mp4"):
 
     target_file = filename
-    if not os.path.exists(f"{SHARED_FOLDER}/{target_file}"):
-        target_file = BBB_FILENAME
-        if not os.path.exists(f"{SHARED_FOLDER}/{target_file}"):
-             return {"error": "File not found. Please run /download-bbb or /create-bbb-container first."}
+    ensure_file(target_file)
 
     # use the get_info command (from exercise 3) to inspect tracks
     payload = {"command": "get_info", "input_file": target_file}
@@ -285,11 +276,7 @@ def visualize_vectors():
 
     input_file = "bbb_20s_multiaudio.mp4"
     
-    if not os.path.exists(f"{SHARED_FOLDER}/{input_file}"):
-        if os.path.exists(f"{SHARED_FOLDER}/{BBB_FILENAME}"):
-             input_file = BBB_FILENAME
-        else:
-             return {"error": "No video found. Run /download-bbb first."}
+    ensure_file(input_file)
 
     output_file = f"vectors_{input_file}"
     
@@ -307,11 +294,7 @@ def yuv_histogram():
 
     input_file = "bbb_20s_multiaudio.mp4"
     
-    if not os.path.exists(f"{SHARED_FOLDER}/{input_file}"):
-        if os.path.exists(f"{SHARED_FOLDER}/{BBB_FILENAME}"):
-             input_file = BBB_FILENAME
-        else:
-             return {"error": "No video found. Run /download-bbb first."}
+    ensure_file(input_file)
 
     output_file = f"histogram_{input_file}"
     
@@ -331,10 +314,7 @@ class ConvertInput(BaseModel):
 def convert_video(params: ConvertInput):
     input_video = "bbb_20s_multiaudio.mp4"
     
-    if not os.path.exists(f"{SHARED_FOLDER}/{input_video}"):
-        input_video = BBB_FILENAME
-        if not os.path.exists(f"{SHARED_FOLDER}/{input_video}"):
-             return {"error": "Video not found. Please run /download-bbb first."}
+    ensure_file(input_video)
 
     # determine extension based on codec
     extension = "mp4"
@@ -359,10 +339,7 @@ def convert_video(params: ConvertInput):
 def create_encoding_ladder():
     input_video = "bbb_20s_multiaudio.mp4"
     
-    if not os.path.exists(f"{SHARED_FOLDER}/{input_video}"):
-        input_video = BBB_FILENAME
-        if not os.path.exists(f"{SHARED_FOLDER}/{input_video}"):
-             return {"error": "Video not found. Please run /download-bbb first."}
+    ensure_file(input_video)
 
     output_base = "ladder_output.mp4"
 
