@@ -1,5 +1,4 @@
-**THIS "main" BRANCH HAS THE CODE FOR PRACTICE 2**
-**THE CODE FOR SEMINAR 2 IS IN BRANCH "seminar2** 
+THIS "main" BRANCH HAS THE CODE FOR PRACTICE 1. THE CODE FOR SEMINAR 2 IS IN BRANCH "seminar2". THE CODE FOR PRACTICE 2 IS IN BRANCH "practice2".
 
 I used the AI refactored code from seminar1 (made in 8, as explained in seminar 1 README.md) as the logic behind the API for more robustness, since I understand this practice is about making the API and encapsulating the service inside a docker container, not about what the logic behind the API actually does.
 
