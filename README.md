@@ -6,4 +6,4 @@ Now we have a GUI. Once the containers are running, you can navigate to http://l
 
 IMPORTANT: For the conversion endpoint (exercise 1), the conversions take A LOT of time. I tried them all (vp8, h265 and av1) and they work, so maybe its better if you trust me rather than waiting hehe.
 
-For the last step regarding AI, I used Gemini 3, which is one of the best models out there. It helped me refactoring and optimizing the code and also gave the UI a much better look.
+For the last step regarding AI, I used Gemini 3, which is one of the best models out there. It helped me refactoring and optimizing the code and also gave the UI a much better look. The git diff command output can be looked at the "git_diff_output.png" image.
